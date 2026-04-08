@@ -1,6 +1,7 @@
 .DS_Store
 node_modules/
 build/
+Resources/original_frames/
 tmp_listening_frames/
 tmp_listening_contact.jpg
 npm-debug.log*

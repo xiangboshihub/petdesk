@@ -7,8 +7,6 @@ HELPER_BIN="$BUILD_DIR/key-monitor"
 
 mkdir -p "$BUILD_DIR"
 rm -f "$HELPER_BIN"
-rm -f "$BUILD_DIR/PetClawCatTyper"
-rm -rf "$BUILD_DIR/PetClawCatTyper.app"
 
 clang \
   -fobjc-arc \
