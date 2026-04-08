@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PetClaw Original Cat</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent !important;
+      overflow: hidden;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .pet {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      cursor: grab;
+    }
+
+    .pet:active {
+      cursor: grabbing;
+    }
+
+    .layer {
+      position: absolute;
+      inset: 0;
+    }
+
+    video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: transparent !important;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 90ms linear;
+    }
+
+    video.is-visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="pet" id="pet">
+    <div class="layer">
+      <video id="catA" muted autoplay playsinline preload="auto"></video>
+      <video id="catB" muted autoplay playsinline preload="auto"></video>
+    </div>
+  </div>
+  <script>
+    const catA = document.getElementById("catA");
+    const catB = document.getElementById("catB");
+    const pet = document.getElementById("pet");
+    const LISTEN_BEFORE_TYPING_MS = 2500;
+    const SLEEP_AFTER_MS = 120000;
+    const clips = {
+      begin: { src: "../../Resources/begin.webm", loop: false, next: "idle" },
+      idle: { src: "../../Resources/static.webm", loop: true },
+      listening: { src: "../../Resources/listening.webm", loop: true, waitOnExit: true, startAt: 6.2 },
+      typingStart: { src: "../../Resources/task-start.webm", loop: false, next: "typingLoop", waitOnExit: true },
+      typingLoop: { src: "../../Resources/task-loop.webm", loop: true, waitOnExit: true },
+      typingLeave: { src: "../../Resources/task-leave.webm", loop: false, next: "idle" },
+      sleepStart: { src: "../../Resources/sleep-start.webm", loop: false, next: "sleepLoop" },
+      sleepLoop: { src: "../../Resources/sleep-loop.webm", loop: true },
+      sleepLeave: { src: "../../Resources/sleep-leave.webm", loop: false, next: "idle" },
+    };
+    const immediateStates = new Set(["idle", "typingStart"]);
+
+    let mode = "idle";
+    let phase = "idle";
+    let queuedPhase = null;
+    let activeVideo = catA;
+    let inactiveVideo = catB;
+    let transitionToken = 0;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let sleepTimer = null;
+    let typingIntroTimer = null;
+    let mousePassthrough = false;
+    let hitTestQueued = false;
+    let lastPointerEvent = null;
+    const hitCanvas = document.createElement("canvas");
+    const hitContext = hitCanvas.getContext("2d", { willReadFrequently: true });
+
+    // Warm the browser cache so clip switches are less jarring.
+    const preloadedVideos = Object.values(clips).map((clip) => {
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.muted = true;
+      video.src = clip.src;
+      return video;
+    });
+
+    activeVideo.classList.add("is-visible");
+
+    function setMousePassthrough(ignore) {
+      if (mousePassthrough === ignore) return;
+      mousePassthrough = ignore;
+      window.electronAPI.setMousePassthrough(ignore);
+    }
+
+    function clearSleepTimer() {
+      if (!sleepTimer) return;
+      window.clearTimeout(sleepTimer);
+      sleepTimer = null;
+    }
+
+    function clearTypingIntroTimer() {
+      if (!typingIntroTimer) return;
+      window.clearTimeout(typingIntroTimer);
+      typingIntroTimer = null;
+    }
+
+    function clipStartTime(clip) {
+      return typeof clip.startAt === "number" ? clip.startAt : 0;
+    }
+
+    function getVideoContentRect(video) {
+      const bounds = video.getBoundingClientRect();
+      const sourceWidth = video.videoWidth || bounds.width;
+      const sourceHeight = video.videoHeight || bounds.height;
+
+      if (!sourceWidth || !sourceHeight || !bounds.width || !bounds.height) {
+        return null;
+      }
+
+      const scale = Math.min(bounds.width / sourceWidth, bounds.height / sourceHeight);
+      const width = sourceWidth * scale;
+      const height = sourceHeight * scale;
+
+      return {
+        left: bounds.left + (bounds.width - width) / 2,
+        top: bounds.top + (bounds.height - height) / 2,
+        width,
+        height,
+        sourceWidth,
+        sourceHeight,
+      };
+    }
+
+    function isOpaqueAtPointer(event) {
+      const video = activeVideo;
+      if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+        return false;
+      }
+
+      const rect = getVideoContentRect(video);
+      if (!rect) return false;
+
+      const x = event.clientX;
+      const y = event.clientY;
+      if (x < rect.left || x >= rect.left + rect.width || y < rect.top || y >= rect.top + rect.height) {
+        return false;
+      }
+
+      if (hitCanvas.width !== rect.sourceWidth || hitCanvas.height !== rect.sourceHeight) {
+        hitCanvas.width = rect.sourceWidth;
+        hitCanvas.height = rect.sourceHeight;
+      }
+
+      hitContext.clearRect(0, 0, hitCanvas.width, hitCanvas.height);
+      hitContext.drawImage(video, 0, 0, hitCanvas.width, hitCanvas.height);
+
+      const sourceX = Math.max(0, Math.min(hitCanvas.width - 1, Math.floor(((x - rect.left) / rect.width) * hitCanvas.width)));
+      const sourceY = Math.max(0, Math.min(hitCanvas.height - 1, Math.floor(((y - rect.top) / rect.height) * hitCanvas.height)));
+      const alpha = hitContext.getImageData(sourceX, sourceY, 1, 1).data[3];
+      return alpha > 24;
+    }
+
+    function queueHitTest(event) {
+      lastPointerEvent = event;
+      if (hitTestQueued) return;
+      hitTestQueued = true;
+      requestAnimationFrame(() => {
+        hitTestQueued = false;
+        if (!lastPointerEvent || dragging) return;
+        setMousePassthrough(!isOpaqueAtPointer(lastPointerEvent));
+      });
+    }
+
+    function scheduleTypingStart() {
+      if (typingIntroTimer) return;
+      typingIntroTimer = window.setTimeout(() => {
+        typingIntroTimer = null;
+        if (mode !== "typing") return;
+
+        if (phase === "typingStart" || phase === "typingLoop") {
+          return;
+        }
+
+        if (phase === "sleepLeave") {
+          queuedPhase = "typingStart";
+          return;
+        }
+
+        requestState("typingStart");
+      }, LISTEN_BEFORE_TYPING_MS);
+    }
+
+    function transitionTo(key) {
+      const clip = clips[key];
+      if (!clip) return;
+      phase = key;
+      queuedPhase = null;
+      const token = ++transitionToken;
+      const nextVideo = inactiveVideo;
+      const previousVideo = activeVideo;
+
+      nextVideo.pause();
+      nextVideo.loop = false;
+      nextVideo.src = clip.src;
+      nextVideo.load();
+
+      const showPreparedVideo = () => {
+        if (token !== transitionToken) return;
+
+        try {
+          nextVideo.currentTime = clipStartTime(clip);
+        } catch {}
+
+        nextVideo.play().catch(() => {});
+        requestAnimationFrame(() => {
+          if (token !== transitionToken) return;
+
+          nextVideo.classList.add("is-visible");
+          previousVideo.classList.remove("is-visible");
+          activeVideo = nextVideo;
+          inactiveVideo = previousVideo;
+          if (lastPointerEvent) {
+            queueHitTest(lastPointerEvent);
+          }
+
+          window.setTimeout(() => {
+            if (inactiveVideo === previousVideo) {
+              previousVideo.pause();
+            }
+          }, 120);
+        });
+      };
+
+      if (nextVideo.readyState >= 2) {
+        showPreparedVideo();
+      } else {
+        nextVideo.addEventListener("canplay", showPreparedVideo, { once: true });
+      }
+    }
+
+    function scheduleSleep() {
+      clearSleepTimer();
+      sleepTimer = window.setTimeout(() => {
+        if (mode === "idle") {
+          mode = "sleep";
+          transitionTo("sleepStart");
+        }
+      }, SLEEP_AFTER_MS);
+    }
+
+    function enterIdle() {
+      mode = "idle";
+      transitionTo("idle");
+      scheduleSleep();
+    }
+
+    function enterTyping() {
+      clearSleepTimer();
+      if (phase === "typingStart" || phase === "typingLoop") {
+        mode = "typing";
+        queuedPhase = null;
+        clearTypingIntroTimer();
+        return;
+      }
+
+      mode = "typing";
+
+      if (phase === "sleepStart" || phase === "sleepLoop") {
+        queuedPhase = "listening";
+        transitionTo("sleepLeave");
+        scheduleTypingStart();
+        return;
+      }
+
+      if (phase === "sleepLeave") {
+        queuedPhase = "listening";
+        scheduleTypingStart();
+        return;
+      }
+
+      if (phase !== "listening") {
+        requestState("listening");
+      }
+
+      scheduleTypingStart();
+    }
+
+    function enterIdleFromTyping() {
+      mode = "idle";
+      clearTypingIntroTimer();
+
+      if (phase === "listening" || phase === "sleepLeave") {
+        requestState("idle");
+        scheduleSleep();
+        return;
+      }
+
+      requestState("typingLeave");
+      scheduleSleep();
+    }
+
+    function requestState(nextPhase) {
+      if (phase === nextPhase) {
+        queuedPhase = null;
+        return;
+      }
+
+      const current = clips[phase];
+      if (current?.waitOnExit && !immediateStates.has(nextPhase)) {
+        queuedPhase = nextPhase;
+        return;
+      }
+
+      transitionTo(nextPhase);
+    }
+
+    function handleEnded(event) {
+      if (event.target !== activeVideo) return;
+      const endedPhase = phase;
+
+      if (queuedPhase) {
+        const next = queuedPhase;
+        queuedPhase = null;
+        transitionTo(next);
+        return;
+      }
+
+      const current = clips[endedPhase];
+      if (current?.loop) {
+        try {
+          activeVideo.currentTime = clipStartTime(current);
+        } catch {}
+        activeVideo.play().catch(() => {});
+        return;
+      }
+
+      if (current?.next) {
+        transitionTo(current.next);
+        if (current.next === "idle") scheduleSleep();
+      }
+    }
+
+    catA.addEventListener("ended", handleEnded);
+    catB.addEventListener("ended", handleEnded);
+
+    window.electronAPI.onCatState((state) => {
+      if (state === "typing") {
+        enterTyping();
+      } else if (mode === "typing") {
+        enterIdleFromTyping();
+      } else if (mode === "idle") {
+        scheduleSleep();
+      } else if (mode === "sleep") {
+        scheduleSleep();
+      }
+    });
+
+    pet.addEventListener("mousedown", (event) => {
+      if (event.button !== 0) return;
+      clearSleepTimer();
+      setMousePassthrough(false);
+      dragging = true;
+      lastX = event.screenX;
+      lastY = event.screenY;
+    });
+
+    window.addEventListener("mousemove", (event) => {
+      queueHitTest(event);
+      if (!dragging) return;
+      const deltaX = event.screenX - lastX;
+      const deltaY = event.screenY - lastY;
+      lastX = event.screenX;
+      lastY = event.screenY;
+      window.electronAPI.dragWindow(deltaX, deltaY);
+    });
+
+    window.addEventListener("mouseup", () => {
+      dragging = false;
+      if (lastPointerEvent) {
+        queueHitTest(lastPointerEvent);
+      }
+    });
+
+    window.addEventListener("mouseleave", () => {
+      if (!dragging) {
+        setMousePassthrough(true);
+      }
+    });
+
+    transitionTo("begin");
+    setMousePassthrough(true);
+  </script>
+</body>
+</html>

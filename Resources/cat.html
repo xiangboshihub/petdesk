@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PetClaw Cat Typer</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    video {
+      width: 220px;
+      height: 220px;
+      object-fit: contain;
+      pointer-events: none;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.18));
+    }
+  </style>
+</head>
+<body>
+  <video id="cat" muted autoplay playsinline></video>
+  <script>
+    const cat = document.getElementById("cat");
+    const clips = {
+      idle: "static.webm",
+      typingStart: "task-start.webm",
+      typingLoop: "task-loop.webm",
+    };
+
+    let mode = "idle";
+    let queuedMode = null;
+
+    function play(src, loop) {
+      cat.loop = loop;
+      if (cat.getAttribute("data-src") === src && cat.loop === loop) {
+        return;
+      }
+      cat.setAttribute("data-src", src);
+      cat.src = src;
+      cat.currentTime = 0;
+      cat.play().catch(() => {});
+    }
+
+    function setIdle() {
+      mode = "idle";
+      queuedMode = null;
+      play(clips.idle, true);
+    }
+
+    function setTyping() {
+      if (mode === "typing") {
+        return;
+      }
+      mode = "typing";
+      queuedMode = "typing-loop";
+      play(clips.typingStart, false);
+    }
+
+    cat.addEventListener("ended", () => {
+      if (queuedMode === "typing-loop") {
+        queuedMode = null;
+        play(clips.typingLoop, true);
+      }
+    });
+
+    window.setCatState = (nextMode) => {
+      if (nextMode === "typing") {
+        setTyping();
+        return;
+      }
+      setIdle();
+    };
+
+    setIdle();
+  </script>
+</body>
+</html>

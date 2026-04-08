@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PetClaw Video Preview</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f1e8;
+      --panel: rgba(255, 252, 246, 0.92);
+      --text: #1f1a16;
+      --muted: #6b6258;
+      --line: rgba(31, 26, 22, 0.12);
+      --accent: #d67232;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "PingFang SC", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(214, 114, 50, 0.16), transparent 28%),
+        radial-gradient(circle at right 20%, rgba(78, 122, 94, 0.14), transparent 26%),
+        var(--bg);
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+
+    .intro {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .logic {
+      margin: 0 0 28px;
+      padding: 16px 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .logic-title {
+      margin: 0 0 8px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .logic p {
+      margin: 0;
+      line-height: 1.7;
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(31, 26, 22, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .meta {
+      padding: 14px 16px 10px;
+    }
+
+    .index {
+      display: inline-flex;
+      min-width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      background: rgba(214, 114, 50, 0.14);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .name {
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 44px;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #000;
+    }
+
+    .path {
+      padding: 10px 16px 16px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--line);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>PetClaw 原版视频总览</h1>
+    <p class="intro">每段视频都加了播放器控件，你可以逐个点开看。建议先按顺序过一遍，再决定我们到底要不要保留“听”的动作。</p>
+
+    <section class="logic">
+      <div class="logic-title">Current Logic</div>
+      <p>当前这版的连接逻辑是：<code>begin -&gt; static</code>；打字时先尝试进 <code>listening</code>，再进 <code>task-start -&gt; task-loop -&gt; task-leave -&gt; static</code>；长时间不打字则走 <code>sleep-start -&gt; sleep-loop</code>，被唤醒时走 <code>sleep-leave</code> 再回打字或待机。</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="meta">
+          <div class="index">01</div>
+          <h2 class="name">begin.webm</h2>
+          <p class="desc">桌宠初次出现时的启动动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/begin.webm"></video>
+        <div class="path">Resources/begin.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">02</div>
+          <h2 class="name">static.webm</h2>
+          <p class="desc">默认待机，也就是你说的“呆萌状态”。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/static.webm"></video>
+        <div class="path">Resources/static.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">03</div>
+          <h2 class="name">listening.webm</h2>
+          <p class="desc">听的动作。前半段动作比较轻，后半段神态更明显。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/listening.webm"></video>
+        <div class="path">Resources/listening.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">04</div>
+          <h2 class="name">task-start.webm</h2>
+          <p class="desc">从待机进入敲字的起手动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/task-start.webm"></video>
+        <div class="path">Resources/task-start.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">05</div>
+          <h2 class="name">task-loop.webm</h2>
+          <p class="desc">持续敲字时循环播放的主动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/task-loop.webm"></video>
+        <div class="path">Resources/task-loop.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">06</div>
+          <h2 class="name">task-leave.webm</h2>
+          <p class="desc">停止敲字后，从工作状态退回待机的收尾动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/task-leave.webm"></video>
+        <div class="path">Resources/task-leave.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">07</div>
+          <h2 class="name">sleep-start.webm</h2>
+          <p class="desc">进入睡觉前的过渡动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/sleep-start.webm"></video>
+        <div class="path">Resources/sleep-start.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">08</div>
+          <h2 class="name">sleep-loop.webm</h2>
+          <p class="desc">睡着之后的循环动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/sleep-loop.webm"></video>
+        <div class="path">Resources/sleep-loop.webm</div>
+      </article>
+
+      <article class="card">
+        <div class="meta">
+          <div class="index">09</div>
+          <h2 class="name">sleep-leave.webm</h2>
+          <p class="desc">从睡眠中醒来的过渡动作。</p>
+        </div>
+        <video controls preload="metadata" src="Resources/sleep-leave.webm"></video>
+        <div class="path">Resources/sleep-leave.webm</div>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
