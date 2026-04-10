@@ -1,0 +1,55 @@
+{
+  "pollIntervalMs": 20000,
+  "fireOnBoot": false,
+  "activeSymbolId": "301235",
+  "symbols": [
+    {
+      "id": "600673",
+      "enabled": true,
+      "name": "东阳光",
+      "code": "600673",
+      "market": "SH",
+      "levels": {
+        "costPrice": 31.16,
+        "stopLossPrice": 27.78,
+        "takeProfitPrice": 37.92
+      },
+      "strategy": {
+        "mode": "auto",
+        "profile": "balanced",
+        "autoStopLoss": true,
+        "autoTakeProfit": true,
+        "basis": "support-atr-2r",
+        "atr14": 1.63,
+        "supportPrice": 28.6,
+        "computedAt": "2026-04-10T05:55:45.065Z",
+        "rewardRisk": 2,
+        "note": "均衡策略：前低下方 + ATR 缓冲，止盈按 2R 计算"
+      }
+    },
+    {
+      "id": "301235",
+      "enabled": true,
+      "name": "华康洁净",
+      "code": "301235",
+      "market": "SZ",
+      "levels": {
+        "costPrice": 51.89,
+        "stopLossPrice": 39.82,
+        "takeProfitPrice": 88.1
+      },
+      "strategy": {
+        "mode": "auto",
+        "profile": "aggressive",
+        "autoStopLoss": true,
+        "autoTakeProfit": true,
+        "basis": "support-atr-2r",
+        "atr14": 3.37,
+        "supportPrice": 42.52,
+        "computedAt": "2026-04-10T05:55:45.114Z",
+        "rewardRisk": 3,
+        "note": "激进策略：前低下方 + ATR 缓冲，止盈按 3R 计算"
+      }
+    }
+  ]
+}

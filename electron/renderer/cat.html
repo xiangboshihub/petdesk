@@ -409,6 +409,15 @@
       }
     });
 
+    pet.addEventListener("dblclick", () => {
+      window.electronAPI.toggleBubbleMode();
+    });
+
+    pet.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      window.electronAPI.toggleBubbleVisible();
+    });
+
     transitionTo("begin");
     setMousePassthrough(true);
   </script>

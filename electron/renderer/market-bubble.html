@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PetClaw Market Bubble</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent !important;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      display: block;
+      padding: 16px 16px 24px 14px;
+    }
+
+    .bubble {
+      width: 188px;
+      min-height: 188px;
+      padding: 18px 14px 14px;
+      border-radius: 14px;
+      background: rgba(11, 15, 22, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 18px 28px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      position: relative;
+      color: rgba(244, 248, 255, 0.94);
+      overflow: hidden;
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        background 180ms ease;
+    }
+
+    .bubble::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      bottom: -6px;
+      width: 16px;
+      height: 16px;
+      background: rgba(11, 15, 22, 0.94);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 0 0 12px 0;
+      transform: rotate(32deg);
+      box-shadow: 5px 6px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    body.focus-mode .topline,
+    body.focus-mode #marketMeta,
+    body.focus-mode #marketFootline,
+    body.focus-mode #alertText {
+      display: none !important;
+    }
+
+    body.focus-mode #focusTitle,
+    body.focus-mode #focusSummary,
+    body.focus-mode #focusMeta {
+      display: block !important;
+    }
+
+    body.market-mode #focusTitle,
+    body.market-mode #focusSummary,
+    body.market-mode #focusMeta {
+      display: none !important;
+    }
+
+    .screen-grid {
+      display: grid;
+      gap: 8px;
+      min-height: 100%;
+      align-content: start;
+    }
+
+    .topline,
+    .footline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .name {
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+    }
+
+    .code {
+      color: rgba(186, 198, 224, 0.76);
+    }
+
+    .price {
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -0.06em;
+      font-weight: 700;
+      color: #f8fbff;
+      transition: color 180ms ease;
+    }
+
+    .meta {
+      display: grid;
+      gap: 5px;
+      font-size: 11px;
+      color: rgba(198, 208, 226, 0.8);
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .value-up {
+      color: #ff6b81;
+    }
+
+    .value-down {
+      color: #43d08a;
+    }
+
+    body.trend-up .bubble {
+      border-color: rgba(255, 107, 129, 0.28);
+      box-shadow:
+        0 18px 28px rgba(0, 0, 0, 0.24),
+        0 0 24px rgba(255, 107, 129, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    body.trend-down .bubble {
+      border-color: rgba(67, 208, 138, 0.28);
+      box-shadow:
+        0 18px 28px rgba(0, 0, 0, 0.24),
+        0 0 24px rgba(67, 208, 138, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    body.trend-up .price {
+      color: #ff7f96;
+    }
+
+    body.trend-down .price {
+      color: #54d999;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(236, 241, 248, 0.88);
+    }
+
+    .status-chip.warning {
+      background: rgba(255, 196, 83, 0.1);
+      color: #ffd37e;
+    }
+
+    .status-chip.danger {
+      background: rgba(255, 102, 102, 0.12);
+      color: #ff9f9f;
+    }
+
+    .alert-text {
+      min-height: 28px;
+      font-size: 11px;
+      line-height: 1.4;
+      color: rgba(236, 241, 248, 0.82);
+    }
+
+    .focus-title {
+      font-size: 24px;
+      line-height: 1.28;
+      letter-spacing: -0.05em;
+      font-weight: 700;
+      color: #f8fbff;
+      margin: 0 0 8px;
+    }
+
+    .focus-summary {
+      display: grid;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: rgba(220, 230, 246, 0.84);
+    }
+
+    .focus-summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .focus-meta {
+      margin-top: 10px;
+      font-size: 10px;
+      color: rgba(182, 193, 212, 0.66);
+    }
+
+    .error-text {
+      color: #ff9f9f;
+    }
+  </style>
+</head>
+<body>
+  <div class="bubble">
+    <div class="screen-grid">
+      <div class="topline">
+        <span class="name" id="symbolName">东阳光</span>
+        <span class="code" id="symbolCode">600673</span>
+      </div>
+
+      <div class="price" id="priceValue">--</div>
+      <div class="focus-title" id="focusTitle" hidden>专注中</div>
+
+      <div class="meta" id="marketMeta">
+        <div class="meta-row">
+          <span>涨跌幅</span>
+          <span id="changePercent">--</span>
+        </div>
+        <div class="meta-row">
+          <span>成本 / 损 / 盈</span>
+          <span id="targetSummary">31.16 / 29.68 / 34.12</span>
+        </div>
+      </div>
+
+      <div class="footline" id="marketFootline">
+        <span class="status-chip" id="statusChip">监控中</span>
+        <span id="updatedAt">--:--:--</span>
+      </div>
+
+      <div class="alert-text" id="alertText">等待行情更新...</div>
+      <div class="focus-summary" id="focusSummary" hidden>
+        <div class="focus-summary-row">
+          <span>本轮按键</span>
+          <span id="currentFocusKeyCount">--</span>
+        </div>
+        <div class="focus-summary-row">
+          <span>最近一轮</span>
+          <span id="lastFocusKeyCount">--</span>
+        </div>
+        <div class="focus-summary-row">
+          <span>今日累计</span>
+          <span id="totalFocusKeyCount">--</span>
+        </div>
+      </div>
+      <div class="focus-meta" id="focusMeta" hidden>双击切模式，右键隐藏气泡</div>
+    </div>
+  </div>
+
+  <script>
+    const els = {
+      symbolName: document.getElementById("symbolName"),
+      symbolCode: document.getElementById("symbolCode"),
+      priceValue: document.getElementById("priceValue"),
+      changePercent: document.getElementById("changePercent"),
+      targetSummary: document.getElementById("targetSummary"),
+      statusChip: document.getElementById("statusChip"),
+      updatedAt: document.getElementById("updatedAt"),
+      alertText: document.getElementById("alertText"),
+      marketMeta: document.getElementById("marketMeta"),
+      marketFootline: document.getElementById("marketFootline"),
+      focusTitle: document.getElementById("focusTitle"),
+      focusSummary: document.getElementById("focusSummary"),
+      currentFocusKeyCount: document.getElementById("currentFocusKeyCount"),
+      lastFocusKeyCount: document.getElementById("lastFocusKeyCount"),
+      totalFocusKeyCount: document.getElementById("totalFocusKeyCount"),
+      focusMeta: document.getElementById("focusMeta"),
+    };
+
+    function formatPrice(value) {
+      if (typeof value !== "number" || Number.isNaN(value)) return "--";
+      return value.toFixed(2);
+    }
+
+    function formatPercent(value) {
+      if (typeof value !== "number" || Number.isNaN(value)) return "--";
+      return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+    }
+
+    function formatQuoteTime(raw) {
+      if (!raw || String(raw).length !== 14) return "--:--:--";
+      const text = String(raw);
+      return `${text.slice(8, 10)}:${text.slice(10, 12)}:${text.slice(12, 14)}`;
+    }
+
+    function applyStatus(kind, text) {
+      els.statusChip.textContent = text;
+      els.statusChip.className = "status-chip";
+      if (kind === "warning") els.statusChip.classList.add("warning");
+      if (kind === "danger") els.statusChip.classList.add("danger");
+    }
+
+    function formatCount(value) {
+      if (typeof value !== "number" || Number.isNaN(value) || value <= 0) return "0次";
+      return `${value}次`;
+    }
+
+    function showMarketView() {
+      document.body.classList.remove("focus-mode");
+      document.body.classList.add("market-mode");
+      els.symbolName.hidden = false;
+      els.priceValue.hidden = false;
+      els.focusTitle.hidden = true;
+      els.focusSummary.hidden = true;
+      els.focusMeta.hidden = true;
+      els.marketMeta.hidden = false;
+      els.marketFootline.hidden = false;
+      els.alertText.hidden = false;
+      els.symbolCode.hidden = false;
+    }
+
+    function applyTrendState(changePercent) {
+      document.body.classList.remove("trend-up", "trend-down", "trend-flat");
+
+      if (typeof changePercent !== "number" || Number.isNaN(changePercent) || changePercent === 0) {
+        document.body.classList.add("trend-flat");
+        return;
+      }
+
+      document.body.classList.add(changePercent > 0 ? "trend-up" : "trend-down");
+    }
+
+    function showFocusView() {
+      document.body.classList.remove("market-mode");
+      document.body.classList.add("focus-mode");
+      els.symbolName.hidden = true;
+      els.priceValue.hidden = true;
+      els.focusTitle.hidden = false;
+      els.focusSummary.hidden = false;
+      els.focusMeta.hidden = false;
+      els.marketMeta.hidden = true;
+      els.marketFootline.hidden = true;
+      els.alertText.hidden = true;
+      els.symbolCode.hidden = true;
+    }
+
+    function renderSnapshot(snapshot) {
+      if (!snapshot) return;
+
+      const config = snapshot.config || {};
+      const activeSymbol = snapshot.activeSymbol || config.symbol || {};
+      const quote = snapshot.quote || null;
+      const lastAlert = snapshot.lastAlert || null;
+      const error = snapshot.error || "";
+      const bubbleMode = snapshot.bubbleMode || "market";
+      const focusState = snapshot.focusState || "idle";
+      const focusSummary = snapshot.focusSummary || {
+        currentTypingKeyCount: 0,
+        lastTypingKeyCount: 0,
+        totalTypingKeyCount: 0,
+      };
+
+      els.symbolName.textContent = activeSymbol?.name || "未配置";
+      els.symbolCode.textContent = activeSymbol?.code || "--";
+      els.targetSummary.textContent =
+        `${formatPrice(activeSymbol?.levels?.costPrice)} / ${formatPrice(activeSymbol?.levels?.stopLossPrice)} / ${formatPrice(activeSymbol?.levels?.takeProfitPrice)}`;
+
+      if (bubbleMode === "focus") {
+        showFocusView();
+        if (focusState === "typing") {
+          els.focusTitle.textContent = "专注中";
+        } else {
+          els.focusTitle.textContent = "空闲中";
+        }
+        els.currentFocusKeyCount.textContent = formatCount(focusSummary.currentTypingKeyCount);
+        els.lastFocusKeyCount.textContent = formatCount(focusSummary.lastTypingKeyCount);
+        els.totalFocusKeyCount.textContent = formatCount(focusSummary.totalTypingKeyCount);
+        return;
+      }
+
+      showMarketView();
+      applyTrendState(quote?.changePercent);
+
+      if (quote) {
+        els.priceValue.textContent = formatPrice(quote.price);
+        els.changePercent.textContent = formatPercent(quote.changePercent);
+        els.changePercent.className = typeof quote.changePercent === "number" && quote.changePercent < 0 ? "value-down" : "value-up";
+        els.updatedAt.textContent = formatQuoteTime(quote.updatedAt);
+      } else {
+        els.priceValue.textContent = "--";
+        els.changePercent.textContent = "--";
+        els.changePercent.className = "";
+        els.updatedAt.textContent = "--:--:--";
+      }
+
+      if (error) {
+        applyStatus("danger", "异常");
+        els.alertText.textContent = error;
+        els.alertText.className = "alert-text error-text";
+        return;
+      }
+
+      els.alertText.className = "alert-text";
+
+      if (lastAlert) {
+        applyStatus(lastAlert.level === "danger" ? "danger" : "warning", lastAlert.title);
+        els.alertText.textContent = lastAlert.message;
+        return;
+      }
+
+      applyStatus("normal", "监控中");
+      const strategy = activeSymbol?.strategy || {};
+      const autoText =
+        strategy.mode === "auto" && strategy.autoStopLoss
+          ? `自动位 ${formatPrice(activeSymbol?.levels?.stopLossPrice)} / ${formatPrice(activeSymbol?.levels?.takeProfitPrice)}`
+          : "继续盯成本位和止损位";
+      els.alertText.textContent = quote
+        ? `当前 ${els.symbolName.textContent} ${formatPrice(quote.price)} 元，${autoText}。`
+        : "等待行情更新...";
+    }
+
+    async function init() {
+      const snapshot = await window.electronAPI.getMarketSnapshot();
+      renderSnapshot(snapshot);
+
+      window.electronAPI.onMarketSnapshot(renderSnapshot);
+      window.electronAPI.onMarketAlert(renderSnapshot);
+    }
+
+    init().catch((error) => {
+      renderSnapshot({
+        error: error?.message || String(error),
+        config: {},
+        quote: null,
+        lastAlert: null,
+      });
+    });
+  </script>
+</body>
+</html>

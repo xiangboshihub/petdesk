@@ -1,7 +1,9 @@
 #import <Cocoa/Cocoa.h>
 #import <ApplicationServices/ApplicationServices.h>
 
-@interface KeyMonitor : NSObject
+@interface KeyMonitor : NSObject {
+    BOOL _keyStates[128];
+}
 @property (nonatomic, strong) dispatch_block_t idleBlock;
 @property (nonatomic, strong) NSTimer *pollTimer;
 @property (nonatomic, assign) BOOL typing;
@@ -31,15 +33,30 @@ static const NSTimeInterval kIdleDelay = 0.7;
 }
 
 - (void)pollKeyboardState {
+    BOOL hasActiveKey = NO;
+
     for (CGKeyCode keyCode = 0; keyCode < 128; keyCode++) {
         if ([self isModifierKeyCode:keyCode]) {
             continue;
         }
 
-        if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, keyCode)) {
+        BOOL isPressed = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, keyCode);
+        if (isPressed && !_keyStates[keyCode]) {
+            _keyStates[keyCode] = YES;
             [self handleKeyDown];
-            return;
+            fprintf(stdout, "key\n");
+            fflush(stdout);
+        } else if (!isPressed && _keyStates[keyCode]) {
+            _keyStates[keyCode] = NO;
         }
+
+        if (isPressed) {
+            hasActiveKey = YES;
+        }
+    }
+
+    if (hasActiveKey) {
+        return;
     }
 }
 
