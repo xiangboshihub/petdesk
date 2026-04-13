@@ -57,7 +57,8 @@
 ### 从源码运行
 
 ```bash
-cd /Users/xiangboshi/Documents/Playground/petclaw-cat-typer
+git clone https://github.com/xiangboshihub/petdesk.git
+cd petdesk
 ./run.command
 ```
 
@@ -69,7 +70,7 @@ cd /Users/xiangboshi/Documents/Playground/petclaw-cat-typer
 也可以分开执行：
 
 ```bash
-cd /Users/xiangboshi/Documents/Playground/petclaw-cat-typer
+cd petdesk
 ./build.sh
 npm start
 ```
