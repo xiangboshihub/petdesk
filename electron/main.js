@@ -377,6 +377,55 @@ function requestQuote(config) {
   });
 }
 
+async function requestIntradaySeries(config) {
+  const symbol = getActiveSymbolConfig(config);
+  const market = String(symbol?.market || "").toUpperCase() === "SZ" ? "sz" : "sh";
+  const code = String(symbol?.code || "").trim();
+  if (!code) {
+    return [];
+  }
+
+  const url = `https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=${market}${code}`;
+  const payload = await requestJson(url);
+  const rawRows = payload?.data?.[`${market}${code}`]?.data?.data || [];
+  if (!Array.isArray(rawRows)) {
+    return [];
+  }
+
+  return rawRows.map(parseMinuteRow).filter(Boolean);
+}
+
+function parseMinuteRow(row) {
+  const parts = Array.isArray(row) ? row : String(row || "").trim().split(/\s+/);
+  if (parts.length < 2) return null;
+
+  const time = String(parts[0] || "").trim();
+  const price = parseNumber(parts[1]);
+  if (!time || typeof price !== "number") {
+    return null;
+  }
+
+  return {
+    time,
+    price,
+  };
+}
+
+function enrichQuoteWithPosition(config, quote, intraday) {
+  const symbol = getActiveSymbolConfig(config);
+  const costPrice = symbol?.levels?.costPrice;
+  const positionChangePercent =
+    typeof costPrice === "number" && costPrice > 0 && typeof quote?.price === "number"
+      ? Number((((quote.price - costPrice) / costPrice) * 100).toFixed(2))
+      : null;
+
+  return {
+    ...quote,
+    intraday: Array.isArray(intraday) ? intraday : [],
+    positionChangePercent,
+  };
+}
+
 async function requestDailyKlines(symbol, limit = 80) {
   const code = String(symbol?.code || "").trim();
   const market = String(symbol?.market || "").toUpperCase() === "SZ" ? "sz" : "sh";
@@ -843,8 +892,8 @@ function createWindow() {
 }
 
 function createBubbleWindow() {
-  const width = 232;
-  const height = 236;
+  const width = 236;
+  const height = 264;
   const { x, y } = getBubblePosition();
 
   bubbleWin = new BrowserWindow({
@@ -887,15 +936,15 @@ function getBubblePosition() {
     const display = screen.getPrimaryDisplay();
     const area = display.workArea;
     return {
-      x: Math.round(area.x + area.width - 216),
-      y: Math.round(area.y + area.height - 336),
+      x: Math.round(area.x + area.width - 222),
+      y: Math.round(area.y + area.height - 370),
     };
   }
 
   const [catX, catY] = win.getPosition();
   return {
-    x: Math.round(catX - 12),
-    y: Math.round(catY - 164),
+    x: Math.round(catX - 14),
+    y: Math.round(catY - 196),
   };
 }
 
@@ -921,11 +970,14 @@ async function pollMarket(kind = "tick") {
   }
 
   try {
-    const quote = await requestQuote(marketState.config);
-    marketState.quote = quote;
+    const [quote, intraday] = await Promise.all([
+      requestQuote(marketState.config),
+      requestIntradaySeries(marketState.config).catch(() => []),
+    ]);
+    marketState.quote = enrichQuoteWithPosition(marketState.config, quote, intraday);
     marketState.error = "";
 
-    const alert = buildAlert(kind, marketState.config, quote);
+    const alert = buildAlert(kind, marketState.config, marketState.quote);
     if (alert) {
       marketState.lastAlert = alert;
       broadcastMarketSnapshot("market-alert");

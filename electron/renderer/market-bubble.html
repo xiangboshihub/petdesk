@@ -23,13 +23,13 @@
 
     body {
       display: block;
-      padding: 16px 16px 24px 14px;
+      padding: 14px 16px 26px 14px;
     }
 
     .bubble {
-      width: 188px;
-      min-height: 188px;
-      padding: 18px 14px 14px;
+      width: 198px;
+      min-height: 214px;
+      padding: 16px 14px 14px;
       border-radius: 14px;
       background: rgba(11, 15, 22, 0.94);
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -83,7 +83,7 @@
 
     .screen-grid {
       display: grid;
-      gap: 8px;
+      gap: 7px;
       min-height: 100%;
       align-content: start;
     }
@@ -108,7 +108,7 @@
     }
 
     .price {
-      font-size: 34px;
+      font-size: 30px;
       line-height: 1;
       letter-spacing: -0.06em;
       font-weight: 700;
@@ -116,9 +116,14 @@
       transition: color 180ms ease;
     }
 
-    .meta {
+    .price-block {
       display: grid;
       gap: 5px;
+    }
+
+    .meta {
+      display: grid;
+      gap: 4px;
       font-size: 11px;
       color: rgba(198, 208, 226, 0.8);
     }
@@ -128,6 +133,34 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+    }
+
+    .chart-wrap {
+      height: 34px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .chart {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .chart-line {
+      fill: none;
+      stroke: rgba(214, 224, 239, 0.82);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .chart-baseline {
+      stroke: rgba(255, 255, 255, 0.12);
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
     }
 
     .value-up {
@@ -162,6 +195,14 @@
       color: #54d999;
     }
 
+    body.trend-up .chart-line {
+      stroke: #ff7f96;
+    }
+
+    body.trend-down .chart-line {
+      stroke: #54d999;
+    }
+
     .status-chip {
       display: inline-flex;
       align-items: center;
@@ -185,7 +226,7 @@
     }
 
     .alert-text {
-      min-height: 28px;
+      min-height: 30px;
       font-size: 11px;
       line-height: 1.4;
       color: rgba(236, 241, 248, 0.82);
@@ -234,7 +275,15 @@
         <span class="code" id="symbolCode">600673</span>
       </div>
 
-      <div class="price" id="priceValue">--</div>
+      <div class="price-block">
+        <div class="price" id="priceValue">--</div>
+        <div class="chart-wrap" id="chartWrap">
+          <svg class="chart" id="intradayChart" viewBox="0 0 160 38" preserveAspectRatio="none" aria-hidden="true">
+            <line class="chart-baseline" x1="0" y1="19" x2="160" y2="19"></line>
+            <polyline class="chart-line" id="chartLine" points=""></polyline>
+          </svg>
+        </div>
+      </div>
       <div class="focus-title" id="focusTitle" hidden>专注中</div>
 
       <div class="meta" id="marketMeta">
@@ -243,8 +292,8 @@
           <span id="changePercent">--</span>
         </div>
         <div class="meta-row">
-          <span>成本 / 损 / 盈</span>
-          <span id="targetSummary">31.16 / 29.68 / 34.12</span>
+          <span>持仓盈亏</span>
+          <span id="positionChangePercent">--</span>
         </div>
       </div>
 
@@ -277,8 +326,10 @@
       symbolName: document.getElementById("symbolName"),
       symbolCode: document.getElementById("symbolCode"),
       priceValue: document.getElementById("priceValue"),
+      chartWrap: document.getElementById("chartWrap"),
+      chartLine: document.getElementById("chartLine"),
       changePercent: document.getElementById("changePercent"),
-      targetSummary: document.getElementById("targetSummary"),
+      positionChangePercent: document.getElementById("positionChangePercent"),
       statusChip: document.getElementById("statusChip"),
       updatedAt: document.getElementById("updatedAt"),
       alertText: document.getElementById("alertText"),
@@ -308,6 +359,32 @@
       return `${text.slice(8, 10)}:${text.slice(10, 12)}:${text.slice(12, 14)}`;
     }
 
+    function applyValueColor(element, value) {
+      element.className = "";
+      if (typeof value !== "number" || Number.isNaN(value) || value === 0) {
+        return;
+      }
+      element.classList.add(value > 0 ? "value-up" : "value-down");
+    }
+
+    function buildChartPoints(items, width = 160, height = 38, padding = 3) {
+      if (!Array.isArray(items) || items.length < 2) return "";
+      const prices = items.map((item) => item?.price).filter((value) => typeof value === "number");
+      if (prices.length < 2) return "";
+
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+      const range = max - min || 1;
+
+      return items
+        .map((item, index) => {
+          const x = (index / (items.length - 1)) * width;
+          const y = height - padding - (((item.price - min) / range) * (height - padding * 2));
+          return `${x.toFixed(2)},${y.toFixed(2)}`;
+        })
+        .join(" ");
+    }
+
     function applyStatus(kind, text) {
       els.statusChip.textContent = text;
       els.statusChip.className = "status-chip";
@@ -325,6 +402,7 @@
       document.body.classList.add("market-mode");
       els.symbolName.hidden = false;
       els.priceValue.hidden = false;
+      els.chartWrap.hidden = false;
       els.focusTitle.hidden = true;
       els.focusSummary.hidden = true;
       els.focusMeta.hidden = true;
@@ -350,6 +428,7 @@
       document.body.classList.add("focus-mode");
       els.symbolName.hidden = true;
       els.priceValue.hidden = true;
+      els.chartWrap.hidden = true;
       els.focusTitle.hidden = false;
       els.focusSummary.hidden = false;
       els.focusMeta.hidden = false;
@@ -377,8 +456,6 @@
 
       els.symbolName.textContent = activeSymbol?.name || "未配置";
       els.symbolCode.textContent = activeSymbol?.code || "--";
-      els.targetSummary.textContent =
-        `${formatPrice(activeSymbol?.levels?.costPrice)} / ${formatPrice(activeSymbol?.levels?.stopLossPrice)} / ${formatPrice(activeSymbol?.levels?.takeProfitPrice)}`;
 
       if (bubbleMode === "focus") {
         showFocusView();
@@ -399,13 +476,21 @@
       if (quote) {
         els.priceValue.textContent = formatPrice(quote.price);
         els.changePercent.textContent = formatPercent(quote.changePercent);
-        els.changePercent.className = typeof quote.changePercent === "number" && quote.changePercent < 0 ? "value-down" : "value-up";
+        applyValueColor(els.changePercent, quote.changePercent);
+        els.positionChangePercent.textContent = formatPercent(quote.positionChangePercent);
+        applyValueColor(els.positionChangePercent, quote.positionChangePercent);
         els.updatedAt.textContent = formatQuoteTime(quote.updatedAt);
+        els.chartLine.setAttribute("points", buildChartPoints(quote.intraday));
+        els.chartWrap.hidden = !Array.isArray(quote.intraday) || quote.intraday.length < 2;
       } else {
         els.priceValue.textContent = "--";
         els.changePercent.textContent = "--";
+        els.positionChangePercent.textContent = "--";
         els.changePercent.className = "";
+        els.positionChangePercent.className = "";
         els.updatedAt.textContent = "--:--:--";
+        els.chartLine.setAttribute("points", "");
+        els.chartWrap.hidden = true;
       }
 
       if (error) {

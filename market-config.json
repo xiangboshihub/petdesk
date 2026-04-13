@@ -1,7 +1,7 @@
 {
   "pollIntervalMs": 20000,
   "fireOnBoot": false,
-  "activeSymbolId": "301235",
+  "activeSymbolId": "600673",
   "symbols": [
     {
       "id": "600673",
@@ -11,8 +11,8 @@
       "market": "SH",
       "levels": {
         "costPrice": 31.16,
-        "stopLossPrice": 27.78,
-        "takeProfitPrice": 37.92
+        "stopLossPrice": 27.8,
+        "takeProfitPrice": 37.88
       },
       "strategy": {
         "mode": "auto",
@@ -20,9 +20,9 @@
         "autoStopLoss": true,
         "autoTakeProfit": true,
         "basis": "support-atr-2r",
-        "atr14": 1.63,
+        "atr14": 1.59,
         "supportPrice": 28.6,
-        "computedAt": "2026-04-10T05:55:45.065Z",
+        "computedAt": "2026-04-13T04:38:36.167Z",
         "rewardRisk": 2,
         "note": "均衡策略：前低下方 + ATR 缓冲，止盈按 2R 计算"
       }
@@ -35,8 +35,8 @@
       "market": "SZ",
       "levels": {
         "costPrice": 51.89,
-        "stopLossPrice": 39.82,
-        "takeProfitPrice": 88.1
+        "stopLossPrice": 39.86,
+        "takeProfitPrice": 87.98
       },
       "strategy": {
         "mode": "auto",
@@ -44,9 +44,9 @@
         "autoStopLoss": true,
         "autoTakeProfit": true,
         "basis": "support-atr-2r",
-        "atr14": 3.37,
+        "atr14": 3.33,
         "supportPrice": 42.52,
-        "computedAt": "2026-04-10T05:55:45.114Z",
+        "computedAt": "2026-04-13T04:38:36.167Z",
         "rewardRisk": 3,
         "note": "激进策略：前低下方 + ATR 缓冲，止盈按 3R 计算"
       }
