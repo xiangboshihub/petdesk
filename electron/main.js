@@ -222,7 +222,7 @@ function normalizeSymbolConfig(symbol) {
     enabled: symbol.enabled !== false,
     name: name || code,
     code,
-    market: String(symbol.market || "").toUpperCase() === "SZ" ? "SZ" : "SH",
+    market: normalizeMarketCode(symbol.market, code),
     levels,
     strategy: normalizeStrategyConfig(symbol.strategy, levels),
   };
@@ -231,6 +231,19 @@ function normalizeSymbolConfig(symbol) {
 function normalizePrice(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? Number(numeric.toFixed(2)) : null;
+}
+
+function normalizeMarketCode(value, code = "") {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "SZ") return "SZ";
+  if (normalized === "BJ") return "BJ";
+  if (normalized === "SH") return "SH";
+
+  const textCode = String(code || "").trim();
+  if (textCode.startsWith("92")) return "BJ";
+  if (textCode.startsWith("00") || textCode.startsWith("30")) return "SZ";
+  if (textCode.startsWith("60") || textCode.startsWith("68") || textCode.startsWith("90")) return "SH";
+  return "SH";
 }
 
 function normalizeStrategyModeValue(value) {
@@ -306,7 +319,9 @@ function quoteCodeFromConfig(config) {
   const symbol = getActiveSymbolConfig(config);
   const market = String(symbol?.market || "").toUpperCase();
   const code = String(symbol?.code || "").trim();
-  return `${market === "SZ" ? "sz" : "sh"}${code}`;
+  if (market === "SZ") return `sz${code}`;
+  if (market === "BJ") return `bj${code}`;
+  return `sh${code}`;
 }
 
 function createQuoteRequestUrl(config) {
@@ -428,7 +443,8 @@ function enrichQuoteWithPosition(config, quote, intraday) {
 
 async function requestDailyKlines(symbol, limit = 80) {
   const code = String(symbol?.code || "").trim();
-  const market = String(symbol?.market || "").toUpperCase() === "SZ" ? "sz" : "sh";
+  const marketCode = String(symbol?.market || "").toUpperCase();
+  const market = marketCode === "SZ" ? "sz" : marketCode === "BJ" ? "bj" : "sh";
   if (!code) {
     throw new Error("股票代码缺失，无法计算自动止盈止损");
   }
@@ -642,18 +658,35 @@ function parseNumber(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
-async function resolveSymbolByName(name) {
+async function resolveSymbolByKeyword(name) {
   const keyword = String(name || "").trim();
   if (!keyword) {
-    throw new Error("股票名称不能为空");
+    throw new Error("股票代码或名称不能为空");
   }
 
   const url = `https://searchapi.eastmoney.com/api/suggest/get?input=${encodeURIComponent(keyword)}&type=14&token=${EASTMONEY_SEARCH_TOKEN}`;
   const payload = await requestJson(url);
   const rows = payload?.QuotationCodeTable?.Data || [];
-  const candidates = rows.filter((row) => row?.Classify === "AStock" || String(row?.SecurityTypeName || "").includes("A"));
+  const candidates = rows.filter((row) => {
+    const classify = String(row?.Classify || "").trim();
+    const securityTypeName = String(row?.SecurityTypeName || "").trim();
+    return (
+      classify === "AStock" ||
+      classify === "23" ||
+      classify === "NEEQ" ||
+      securityTypeName.includes("A") ||
+      securityTypeName.includes("科创") ||
+      securityTypeName.includes("沪") ||
+      securityTypeName.includes("深") ||
+      securityTypeName.includes("京") ||
+      securityTypeName.includes("北交所")
+    );
+  });
   const matched =
+    candidates.find((row) => String(row?.Code || "").trim() === keyword) ||
     candidates.find((row) => row?.Name === keyword) ||
+    candidates.find((row) => String(row?.PinYin || "").trim().toUpperCase() === keyword.toUpperCase()) ||
+    candidates.find((row) => String(row?.Code || "").includes(keyword)) ||
     candidates.find((row) => String(row?.Name || "").includes(keyword)) ||
     candidates[0];
 
@@ -665,12 +698,40 @@ async function resolveSymbolByName(name) {
     id: String(matched.Code || keyword).trim(),
     name: String(matched.Name || keyword).trim(),
     code: String(matched.Code || "").trim(),
-    market:
-      String(matched.MarketType || "").trim() === "0" ||
-      String(matched.QuoteID || "").startsWith("0.")
-        ? "SZ"
-        : "SH",
+    market: resolveMatchedMarket(matched),
   };
+}
+
+function resolveMatchedMarket(matched) {
+  const marketType = String(matched?.MarketType || "").trim();
+  const quoteId = String(matched?.QuoteID || "").trim();
+  const code = String(matched?.Code || "").trim();
+  const securityTypeName = String(matched?.SecurityTypeName || "").trim();
+
+  if (
+    marketType === "_TB" ||
+    quoteId.startsWith("0.92") ||
+    code.startsWith("92") ||
+    securityTypeName.includes("京")
+  ) {
+    return "BJ";
+  }
+
+  if (marketType === "0" || quoteId.startsWith("0.") || code.startsWith("00") || code.startsWith("30")) {
+    return "SZ";
+  }
+
+  if (
+    marketType === "1" ||
+    quoteId.startsWith("1.") ||
+    code.startsWith("60") ||
+    code.startsWith("68") ||
+    securityTypeName.includes("科创")
+  ) {
+    return "SH";
+  }
+
+  return "SH";
 }
 
 async function resolveMarketConfig(rawConfig) {
@@ -681,7 +742,7 @@ async function resolveMarketConfig(rawConfig) {
 
       if (symbol.name) {
         try {
-          const resolved = await resolveSymbolByName(symbol.name);
+          const resolved = await resolveSymbolByKeyword(symbol.name);
           nextSymbol = {
             ...nextSymbol,
             id: resolved.id || nextSymbol.id,
@@ -758,6 +819,173 @@ function buildAlert(kind, config, quote) {
   }
 
   return null;
+}
+
+function normalizeLookupKeyword(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function findSymbolByInput(config, input) {
+  const keyword = normalizeLookupKeyword(input);
+  if (!keyword || !config || !Array.isArray(config.symbols)) {
+    return null;
+  }
+
+  return (
+    config.symbols.find((symbol) => normalizeLookupKeyword(symbol.code) === keyword) ||
+    config.symbols.find((symbol) => normalizeLookupKeyword(symbol.name) === keyword) ||
+    config.symbols.find((symbol) => normalizeLookupKeyword(symbol.id) === keyword) ||
+    null
+  );
+}
+
+function buildManualSymbol(resolved) {
+  return normalizeSymbolConfig({
+    id: resolved.id,
+    enabled: true,
+    name: resolved.name,
+    code: resolved.code,
+    market: resolved.market,
+    levels: {
+      costPrice: null,
+      stopLossPrice: null,
+      takeProfitPrice: null,
+    },
+    strategy: {
+      mode: "manual",
+      autoStopLoss: false,
+      autoTakeProfit: false,
+    },
+  });
+}
+
+function parseOptionalCost(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const normalized = text.replace("，", ".").replace(",", ".");
+  const numeric = Number(normalized);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    throw new Error("成本价格式不正确");
+  }
+  return Number(numeric.toFixed(2));
+}
+
+function buildAutoStrategy(profile = "balanced") {
+  return normalizeStrategyConfig({
+    mode: "auto",
+    profile,
+    autoStopLoss: true,
+    autoTakeProfit: true,
+  });
+}
+
+function applyCostToSymbol(symbol, costPrice) {
+  if (typeof costPrice !== "number") {
+    return symbol;
+  }
+
+  const nextStrategy =
+    symbol?.strategy?.mode === "auto"
+      ? {
+          ...symbol.strategy,
+          autoStopLoss: true,
+          autoTakeProfit: true,
+        }
+      : buildAutoStrategy();
+
+  return normalizeSymbolConfig({
+    ...symbol,
+    levels: {
+      ...symbol.levels,
+      costPrice,
+    },
+    strategy: nextStrategy,
+  });
+}
+
+async function persistResolvedConfig(config, kind = "boot") {
+  const resolvedConfig = await resolveMarketConfig(config);
+  saveMarketConfig(resolvedConfig);
+  applyMarketConfig(resolvedConfig, { kind });
+  return resolvedConfig;
+}
+
+async function activateSymbolByInput(payload) {
+  const input = typeof payload === "string" ? payload : payload?.input;
+  const removeCurrent = payload?.action === "delete-current";
+  const keyword = String(input || "").trim();
+  const costPrice = parseOptionalCost(payload?.cost);
+  const currentConfig = marketState.config ? normalizeMarketConfig(marketState.config) : loadMarketConfig();
+  const currentActive = getActiveSymbolConfig(currentConfig);
+
+  if (removeCurrent) {
+    if (!currentActive) {
+      throw new Error("当前没有可删除的股票");
+    }
+
+    const nextSymbols = currentConfig.symbols.filter((symbol) => symbol.id !== currentActive.id);
+    const nextConfig = {
+      ...currentConfig,
+      symbols: nextSymbols,
+      activeSymbolId: resolveActiveSymbolId(currentConfig.activeSymbolId, nextSymbols),
+    };
+    await persistResolvedConfig(nextConfig);
+    return {
+      removed: true,
+      symbol: currentActive,
+    };
+  }
+
+  const lookupKeyword = keyword || currentActive?.code || currentActive?.name || "";
+  if (!lookupKeyword) {
+    throw new Error("请输入股票代码或名称");
+  }
+
+  const matchedLocal = findSymbolByInput(currentConfig, lookupKeyword);
+  if (matchedLocal) {
+    const updatedSymbol = applyCostToSymbol(matchedLocal, costPrice);
+    const nextConfig = {
+      ...currentConfig,
+      activeSymbolId: updatedSymbol.id,
+      symbols: currentConfig.symbols.map((symbol) => (symbol.id === updatedSymbol.id ? updatedSymbol : symbol)),
+    };
+    const resolvedConfig = await persistResolvedConfig(nextConfig);
+    return {
+      added: false,
+      symbol: getActiveSymbolConfig(resolvedConfig),
+    };
+  }
+
+  const resolved = await resolveSymbolByKeyword(lookupKeyword);
+  const matchedResolved = findSymbolByInput(currentConfig, resolved.code) || findSymbolByInput(currentConfig, resolved.name);
+  if (matchedResolved) {
+    const updatedSymbol = applyCostToSymbol(matchedResolved, costPrice);
+    const nextConfig = {
+      ...currentConfig,
+      activeSymbolId: updatedSymbol.id,
+      symbols: currentConfig.symbols.map((symbol) => (symbol.id === updatedSymbol.id ? updatedSymbol : symbol)),
+    };
+    const resolvedConfig = await persistResolvedConfig(nextConfig);
+    return {
+      added: false,
+      symbol: getActiveSymbolConfig(resolvedConfig),
+    };
+  }
+
+  let nextSymbol = buildManualSymbol(resolved);
+  if (typeof costPrice === "number") {
+    nextSymbol = applyCostToSymbol(nextSymbol, costPrice);
+  }
+  const nextConfig = {
+    ...currentConfig,
+    activeSymbolId: nextSymbol.id,
+    symbols: [...currentConfig.symbols, nextSymbol],
+  };
+  const resolvedConfig = await persistResolvedConfig(nextConfig);
+  return {
+    added: true,
+    symbol: getActiveSymbolConfig(resolvedConfig),
+  };
 }
 
 function broadcastMarketSnapshot(channel = "market-snapshot") {
@@ -1128,6 +1356,14 @@ ipcMain.handle("drag-window", (_event, deltaX, deltaY) => {
 
 ipcMain.handle("set-mouse-passthrough", (_event, ignore) => {
   setMousePassthrough(Boolean(ignore));
+});
+
+ipcMain.handle("activate-symbol-input", async (_event, input) => {
+  const result = await activateSymbolByInput(input);
+  return {
+    ok: true,
+    ...result,
+  };
 });
 
 ipcMain.handle("get-market-snapshot", () => ({

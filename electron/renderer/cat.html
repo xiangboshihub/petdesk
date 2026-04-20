@@ -36,6 +36,105 @@
       inset: 0;
     }
 
+    .symbol-entry {
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      transform: translateX(-50%);
+      width: 170px;
+      padding: 8px 8px 7px;
+      border-radius: 14px;
+      background: rgba(12, 16, 24, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        0 10px 24px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+      z-index: 4;
+    }
+
+    .symbol-entry.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .symbol-entry-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      font: 600 11px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      color: rgba(240, 244, 250, 0.92);
+    }
+
+    .symbol-entry-close {
+      border: 0;
+      background: transparent;
+      color: rgba(198, 208, 226, 0.86);
+      font: inherit;
+      cursor: pointer;
+      padding: 0;
+      pointer-events: auto;
+    }
+
+    .symbol-entry-form {
+      display: grid;
+      gap: 5px;
+    }
+
+    .symbol-entry-input {
+      width: 100%;
+      height: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #f8fbff;
+      outline: none;
+      padding: 0 9px;
+      font: 600 11px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+
+    .symbol-entry-input::placeholder {
+      color: rgba(184, 195, 213, 0.62);
+    }
+
+    .symbol-entry-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+
+    .symbol-entry-submit {
+      height: 26px;
+      border: 0;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #f8fbff;
+      font: 600 11px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .symbol-entry-remove {
+      background: rgba(255, 107, 129, 0.14);
+      color: #ffb1bd;
+    }
+
+    .symbol-entry-status {
+      min-height: 14px;
+      font: 500 9px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      color: rgba(190, 202, 221, 0.8);
+    }
+
+    .symbol-entry-status.is-error {
+      color: #ff9f9f;
+    }
+
     video {
       position: absolute;
       inset: 0;
@@ -60,11 +159,33 @@
       <video id="catA" muted autoplay playsinline preload="auto"></video>
       <video id="catB" muted autoplay playsinline preload="auto"></video>
     </div>
+    <div class="symbol-entry" id="symbolEntry" hidden>
+      <div class="symbol-entry-top">
+        <span>切换股票</span>
+        <button class="symbol-entry-close" id="symbolEntryClose" type="button">关闭</button>
+      </div>
+      <form class="symbol-entry-form" id="symbolEntryForm">
+        <input class="symbol-entry-input" id="symbolEntryInput" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="代码或名称">
+        <input class="symbol-entry-input" id="symbolCostInput" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="成本价，可不填">
+        <div class="symbol-entry-actions">
+          <button class="symbol-entry-submit" id="symbolEntrySubmit" type="submit">保存切换</button>
+          <button class="symbol-entry-submit symbol-entry-remove" id="symbolEntryRemove" type="button">删除当前</button>
+        </div>
+        <div class="symbol-entry-status" id="symbolEntryStatus">双击输入，右键关闭</div>
+      </form>
+    </div>
   </div>
   <script>
     const catA = document.getElementById("catA");
     const catB = document.getElementById("catB");
     const pet = document.getElementById("pet");
+    const symbolEntry = document.getElementById("symbolEntry");
+    const symbolEntryForm = document.getElementById("symbolEntryForm");
+    const symbolEntryInput = document.getElementById("symbolEntryInput");
+    const symbolCostInput = document.getElementById("symbolCostInput");
+    const symbolEntryClose = document.getElementById("symbolEntryClose");
+    const symbolEntryRemove = document.getElementById("symbolEntryRemove");
+    const symbolEntryStatus = document.getElementById("symbolEntryStatus");
     const LISTEN_BEFORE_TYPING_MS = 2500;
     const SLEEP_AFTER_MS = 120000;
     const clips = {
@@ -94,6 +215,7 @@
     let mousePassthrough = false;
     let hitTestQueued = false;
     let lastPointerEvent = null;
+    let symbolEntryOpen = false;
     const hitCanvas = document.createElement("canvas");
     const hitContext = hitCanvas.getContext("2d", { willReadFrequently: true });
 
@@ -112,6 +234,106 @@
       if (mousePassthrough === ignore) return;
       mousePassthrough = ignore;
       window.electronAPI.setMousePassthrough(ignore);
+    }
+
+    function clearClickOpenTimer() {
+      return;
+    }
+
+    function setEntryStatus(text, isError = false) {
+      symbolEntryStatus.textContent = text;
+      symbolEntryStatus.classList.toggle("is-error", Boolean(isError));
+    }
+
+    function openSymbolEntry() {
+      symbolEntry.hidden = false;
+      symbolEntry.classList.add("is-visible");
+      symbolEntryOpen = true;
+      setMousePassthrough(false);
+      setEntryStatus("右键输入，双击切模式");
+      window.electronAPI.getMarketSnapshot().then((snapshot) => {
+        const activeSymbol = snapshot?.activeSymbol || {};
+        symbolEntryInput.value = activeSymbol?.code || activeSymbol?.name || "";
+        symbolCostInput.value =
+          typeof activeSymbol?.levels?.costPrice === "number"
+            ? activeSymbol.levels.costPrice.toFixed(2)
+            : "";
+      }).catch(() => {
+        symbolEntryInput.value = "";
+        symbolCostInput.value = "";
+      }).finally(() => {
+        window.setTimeout(() => {
+          symbolEntryInput.focus();
+          symbolEntryInput.select();
+        }, 0);
+      });
+    }
+
+    function closeSymbolEntry() {
+      symbolEntryOpen = false;
+      symbolEntry.classList.remove("is-visible");
+      symbolEntry.hidden = true;
+      symbolEntryInput.blur();
+      symbolCostInput.blur();
+      symbolEntryInput.value = "";
+      symbolCostInput.value = "";
+      symbolEntryInput.disabled = false;
+      symbolCostInput.disabled = false;
+      symbolEntryRemove.disabled = false;
+      setEntryStatus("右键输入，双击切模式");
+      if (!dragging && lastPointerEvent) {
+        queueHitTest(lastPointerEvent);
+      } else if (!dragging) {
+        setMousePassthrough(true);
+      }
+    }
+
+    async function submitSymbolEntry() {
+      setEntryStatus("正在切换…");
+      symbolEntryInput.disabled = true;
+      symbolCostInput.disabled = true;
+      symbolEntryRemove.disabled = true;
+
+      try {
+        const result = await window.electronAPI.activateSymbolInput({
+          input: symbolEntryInput.value.trim(),
+          cost: symbolCostInput.value.trim(),
+        });
+        const actionText = result?.added ? "已新增并切换到" : "已切换到";
+        setEntryStatus(`${actionText} ${result?.symbol?.name || symbolEntryInput.value.trim()}`);
+        window.setTimeout(() => {
+          closeSymbolEntry();
+        }, 420);
+      } catch (error) {
+        setEntryStatus(error?.message || String(error), true);
+      } finally {
+        symbolEntryInput.disabled = false;
+        symbolCostInput.disabled = false;
+        symbolEntryRemove.disabled = false;
+      }
+    }
+
+    async function removeCurrentSymbol() {
+      setEntryStatus("正在删除当前股票…");
+      symbolEntryInput.disabled = true;
+      symbolCostInput.disabled = true;
+      symbolEntryRemove.disabled = true;
+
+      try {
+        const result = await window.electronAPI.activateSymbolInput({
+          action: "delete-current",
+        });
+        setEntryStatus(`已删除 ${result?.symbol?.name || "当前股票"}`);
+        window.setTimeout(() => {
+          closeSymbolEntry();
+        }, 320);
+      } catch (error) {
+        setEntryStatus(error?.message || String(error), true);
+      } finally {
+        symbolEntryInput.disabled = false;
+        symbolCostInput.disabled = false;
+        symbolEntryRemove.disabled = false;
+      }
     }
 
     function clearSleepTimer() {
@@ -153,7 +375,22 @@
       };
     }
 
+    function isEntryHit(event) {
+      if (!symbolEntryOpen || symbolEntry.hidden) {
+        return false;
+      }
+
+      const rect = symbolEntry.getBoundingClientRect();
+      const x = event.clientX;
+      const y = event.clientY;
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    }
+
     function isOpaqueAtPointer(event) {
+      if (isEntryHit(event)) {
+        return true;
+      }
+
       const video = activeVideo;
       if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
         return false;
@@ -189,6 +426,10 @@
       requestAnimationFrame(() => {
         hitTestQueued = false;
         if (!lastPointerEvent || dragging) return;
+        if (symbolEntryOpen) {
+          setMousePassthrough(false);
+          return;
+        }
         setMousePassthrough(!isOpaqueAtPointer(lastPointerEvent));
       });
     }
@@ -366,6 +607,7 @@
     catB.addEventListener("ended", handleEnded);
 
     window.electronAPI.onCatState((state) => {
+      if (symbolEntryOpen) return;
       if (state === "typing") {
         enterTyping();
       } else if (mode === "typing") {
@@ -379,6 +621,7 @@
 
     pet.addEventListener("mousedown", (event) => {
       if (event.button !== 0) return;
+      if (symbolEntryOpen) return;
       clearSleepTimer();
       setMousePassthrough(false);
       dragging = true;
@@ -404,18 +647,65 @@
     });
 
     window.addEventListener("mouseleave", () => {
-      if (!dragging) {
+      if (!dragging && !symbolEntryOpen) {
         setMousePassthrough(true);
       }
     });
 
-    pet.addEventListener("dblclick", () => {
+    pet.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      if (symbolEntryOpen) {
+        closeSymbolEntry();
+      }
       window.electronAPI.toggleBubbleMode();
     });
 
     pet.addEventListener("contextmenu", (event) => {
       event.preventDefault();
-      window.electronAPI.toggleBubbleVisible();
+      if (symbolEntryOpen) {
+        closeSymbolEntry();
+        return;
+      }
+      openSymbolEntry();
+    });
+
+    symbolEntry.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
+      dragging = false;
+    });
+
+    symbolEntry.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    symbolEntry.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSymbolEntry();
+    });
+
+    symbolEntryClose.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSymbolEntry();
+    });
+
+    symbolEntryRemove.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void removeCurrentSymbol();
+    });
+
+    symbolEntryForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void submitSymbolEntry();
+    });
+
+    symbolEntryInput.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSymbolEntry();
+      }
     });
 
     transitionTo("begin");

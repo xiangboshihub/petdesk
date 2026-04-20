@@ -22,4 +22,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
   quitApp: () => ipcRenderer.invoke("quit-app"),
   dragWindow: (deltaX, deltaY) => ipcRenderer.invoke("drag-window", deltaX, deltaY),
   setMousePassthrough: (ignore) => ipcRenderer.invoke("set-mouse-passthrough", ignore),
+  activateSymbolInput: (input) => ipcRenderer.invoke("activate-symbol-input", input),
 });

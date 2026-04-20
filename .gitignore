@@ -1,6 +1,8 @@
 .DS_Store
 node_modules/
 build/
+dist/
+releases/
 Resources/original_frames/
 tmp_listening_frames/
 tmp_listening_contact.jpg
