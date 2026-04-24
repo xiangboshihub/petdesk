@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
@@ -34,6 +34,7 @@ const AUTO_LEVEL_PROFILES = {
 };
 const DEFAULT_AUTO_LEVEL_PROFILE = "balanced";
 const ATR_PERIOD = 14;
+const CLEANUP_INTERVAL_MS = 5 * 24 * 60 * 60 * 1000;
 
 let win;
 let bubbleWin;
@@ -62,6 +63,56 @@ let marketState = {
     totalTypingKeyCount: 0,
   },
 };
+
+function cleanupStatePath() {
+  return path.join(app.getPath("userData"), "cleanup-state.json");
+}
+
+function loadCleanupState() {
+  try {
+    return JSON.parse(fs.readFileSync(cleanupStatePath(), "utf8"));
+  } catch (_error) {
+    return {};
+  }
+}
+
+function saveCleanupState(state) {
+  try {
+    fs.mkdirSync(path.dirname(cleanupStatePath()), { recursive: true });
+    fs.writeFileSync(cleanupStatePath(), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  } catch (error) {
+    console.error("Failed to save cleanup state:", error?.message || error);
+  }
+}
+
+async function clearRuntimeCaches() {
+  const defaultSession = session.defaultSession;
+  if (!defaultSession) {
+    return;
+  }
+
+  await Promise.allSettled([
+    defaultSession.clearCache(),
+    defaultSession.clearStorageData({
+      storages: ["cachestorage", "serviceworkers", "shadercache", "indexdb", "localstorage", "websql"],
+    }),
+  ]);
+}
+
+async function maybeRunScheduledCleanup() {
+  const state = loadCleanupState();
+  const lastCleanupAt = Number(state.lastCleanupAt) || 0;
+  const now = Date.now();
+
+  if (lastCleanupAt > 0 && now - lastCleanupAt < CLEANUP_INTERVAL_MS) {
+    return;
+  }
+
+  await clearRuntimeCaches();
+  saveCleanupState({
+    lastCleanupAt: now,
+  });
+}
 
 function todayKey() {
   const now = new Date();
@@ -1260,8 +1311,8 @@ function watchMarketConfig() {
 function createWindow() {
   const display = screen.getPrimaryDisplay();
   const area = display.workArea;
-  const width = 240;
-  const height = 240;
+  const width = 208;
+  const height = 208;
 
   win = new BrowserWindow({
     width,
@@ -1295,8 +1346,8 @@ function createWindow() {
 }
 
 function createBubbleWindow() {
-  const width = 236;
-  const height = 264;
+  const width = 214;
+  const height = 286;
   const { x, y } = getBubblePosition();
 
   bubbleWin = new BrowserWindow({
@@ -1339,15 +1390,15 @@ function getBubblePosition() {
     const display = screen.getPrimaryDisplay();
     const area = display.workArea;
     return {
-      x: Math.round(area.x + area.width - 222),
-      y: Math.round(area.y + area.height - 370),
+      x: Math.round(area.x + area.width - 204),
+      y: Math.round(area.y + area.height - 392),
     };
   }
 
   const [catX, catY] = win.getPosition();
   return {
-    x: Math.round(catX - 14),
-    y: Math.round(catY - 196),
+    x: Math.round(catX - 6),
+    y: Math.round(catY - 194),
   };
 }
 
@@ -1466,6 +1517,7 @@ function startMonitor() {
 
 app.whenReady().then(async () => {
   app.dock.hide();
+  await maybeRunScheduledCleanup();
   createWindow();
   createBubbleWindow();
   startMonitor();

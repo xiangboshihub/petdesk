@@ -23,14 +23,14 @@
 
     body {
       display: block;
-      padding: 14px 16px 26px 14px;
+      padding: 10px 12px 18px 10px;
     }
 
     .bubble {
-      width: 198px;
-      min-height: 214px;
-      padding: 16px 14px 14px;
-      border-radius: 14px;
+      width: 182px;
+      min-height: 238px;
+      padding: 13px 12px 10px;
+      border-radius: 16px;
       background: rgba(11, 15, 22, 0.94);
       border: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow:
@@ -50,15 +50,15 @@
     .bubble::after {
       content: "";
       position: absolute;
-      left: 18px;
-      bottom: -6px;
-      width: 16px;
-      height: 16px;
+      left: 16px;
+      bottom: -4px;
+      width: 12px;
+      height: 12px;
       background: rgba(11, 15, 22, 0.94);
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 0 0 12px 0;
-      transform: rotate(32deg);
+      border-radius: 0 0 10px 10px;
+      transform: rotate(34deg);
       box-shadow: 5px 6px 10px rgba(0, 0, 0, 0.08);
     }
 
@@ -83,9 +83,10 @@
 
     .screen-grid {
       display: grid;
-      gap: 7px;
+      gap: 6px;
       min-height: 100%;
       align-content: start;
+      grid-template-rows: auto 1fr auto auto;
     }
 
     .topline,
@@ -94,21 +95,30 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .name {
       font-weight: 600;
       letter-spacing: 0.01em;
       color: #ffffff;
+      line-height: 1;
+      min-width: 0;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .code {
       color: rgba(186, 198, 224, 0.76);
+      font-size: 9px;
+      line-height: 1;
+      white-space: nowrap;
     }
 
     .price {
-      font-size: 30px;
+      font-size: 27px;
       line-height: 1;
       letter-spacing: -0.06em;
       font-weight: 700;
@@ -118,14 +128,35 @@
 
     .price-block {
       display: grid;
-      gap: 5px;
+      grid-template-rows: auto 1fr;
+      gap: 6px;
+      min-height: 0;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .updated-at {
+      font-size: 9px;
+      line-height: 1;
+      color: rgba(186, 198, 224, 0.76);
+      white-space: nowrap;
+      min-width: 50px;
+      text-align: right;
     }
 
     .meta {
       display: grid;
-      gap: 4px;
-      font-size: 11px;
+      gap: 3px;
+      font-size: 10px;
       color: rgba(198, 208, 226, 0.8);
+      margin-top: 0;
+      align-self: end;
+      padding-top: 6px;
     }
 
     .meta-row {
@@ -136,8 +167,9 @@
     }
 
     .chart-wrap {
-      height: 34px;
-      border-radius: 10px;
+      height: auto;
+      min-height: 116px;
+      border-radius: 9px;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid rgba(255, 255, 255, 0.06);
       overflow: hidden;
@@ -155,6 +187,17 @@
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
+    }
+
+    .chart-dot {
+      fill: currentColor;
+    }
+
+    .chart-tag {
+      fill: currentColor;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
     }
 
     .chart-baseline {
@@ -203,33 +246,51 @@
       stroke: #54d999;
     }
 
-    .status-chip {
-      display: inline-flex;
+    .status-rail {
+      display: flex;
       align-items: center;
-      gap: 5px;
-      padding: 3px 8px;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 2px;
+    }
+
+    .status-lines {
+      display: grid;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .status-line {
+      height: 3px;
       border-radius: 999px;
-      font-size: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.05);
-      color: rgba(236, 241, 248, 0.88);
+      background: rgba(214, 224, 239, 0.16);
+      overflow: hidden;
+      position: relative;
     }
 
-    .status-chip.warning {
-      background: rgba(255, 196, 83, 0.1);
-      color: #ffd37e;
+    .status-line::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--line-width, 55%);
+      border-radius: inherit;
+      background: rgba(214, 224, 239, 0.58);
     }
 
-    .status-chip.danger {
-      background: rgba(255, 102, 102, 0.12);
-      color: #ff9f9f;
+    .status-line:nth-child(2)::after {
+      width: var(--line-width-2, 78%);
     }
 
-    .alert-text {
-      min-height: 30px;
-      font-size: 11px;
-      line-height: 1.4;
-      color: rgba(236, 241, 248, 0.82);
+    .status-line:nth-child(3)::after {
+      width: var(--line-width-3, 34%);
+    }
+
+    .status-lines.warning .status-line::after {
+      background: rgba(255, 211, 126, 0.72);
+    }
+
+    .status-lines.danger .status-line::after {
+      background: rgba(255, 159, 159, 0.76);
     }
 
     .focus-title {
@@ -276,16 +337,19 @@
       </div>
 
       <div class="price-block">
-        <div class="price" id="priceValue">--</div>
+        <div class="price-row">
+          <div class="price" id="priceValue">--</div>
+          <span class="updated-at" id="updatedAt">--:--:--</span>
+        </div>
         <div class="chart-wrap" id="chartWrap">
-          <svg class="chart" id="intradayChart" viewBox="0 0 160 38" preserveAspectRatio="none" aria-hidden="true">
-            <line class="chart-baseline" x1="0" y1="19" x2="160" y2="19"></line>
+          <svg class="chart" id="intradayChart" viewBox="0 0 160 120" preserveAspectRatio="none" aria-hidden="true">
+            <line class="chart-baseline" x1="0" y1="60" x2="160" y2="60"></line>
             <polyline class="chart-line" id="chartLine" points=""></polyline>
+            <circle class="chart-dot" id="chartDot" cx="0" cy="0" r="1.8" hidden></circle>
+            <text class="chart-tag" id="chartPriceTag" x="0" y="0" hidden>--</text>
           </svg>
         </div>
       </div>
-      <div class="focus-title" id="focusTitle" hidden>专注中</div>
-
       <div class="meta" id="marketMeta">
         <div class="meta-row">
           <span>涨跌幅</span>
@@ -298,11 +362,15 @@
       </div>
 
       <div class="footline" id="marketFootline">
-        <span class="status-chip" id="statusChip">监控中</span>
-        <span id="updatedAt">--:--:--</span>
+        <div class="status-rail">
+          <div class="status-lines" id="statusLines" aria-hidden="true">
+            <span class="status-line"></span>
+            <span class="status-line"></span>
+            <span class="status-line"></span>
+          </div>
+        </div>
       </div>
-
-      <div class="alert-text" id="alertText">等待行情更新...</div>
+      <div class="focus-title" id="focusTitle" hidden>专注中</div>
       <div class="focus-summary" id="focusSummary" hidden>
         <div class="focus-summary-row">
           <span>本轮按键</span>
@@ -328,11 +396,12 @@
       priceValue: document.getElementById("priceValue"),
       chartWrap: document.getElementById("chartWrap"),
       chartLine: document.getElementById("chartLine"),
+      chartDot: document.getElementById("chartDot"),
+      chartPriceTag: document.getElementById("chartPriceTag"),
       changePercent: document.getElementById("changePercent"),
       positionChangePercent: document.getElementById("positionChangePercent"),
-      statusChip: document.getElementById("statusChip"),
+      statusLines: document.getElementById("statusLines"),
       updatedAt: document.getElementById("updatedAt"),
-      alertText: document.getElementById("alertText"),
       marketMeta: document.getElementById("marketMeta"),
       marketFootline: document.getElementById("marketFootline"),
       focusTitle: document.getElementById("focusTitle"),
@@ -376,29 +445,59 @@
       element.classList.add(value > 0 ? "value-up" : "value-down");
     }
 
-    function buildChartPoints(items, width = 160, height = 38, padding = 3) {
-      if (!Array.isArray(items) || items.length < 2) return "";
+    function buildChartState(items, width = 160, height = 120, padding = 8) {
+      if (!Array.isArray(items) || items.length < 2) return null;
       const prices = items.map((item) => item?.price).filter((value) => typeof value === "number");
-      if (prices.length < 2) return "";
+      if (prices.length < 2) return null;
 
       const min = Math.min(...prices);
       const max = Math.max(...prices);
       const range = max - min || 1;
 
-      return items
+      const points = items
         .map((item, index) => {
           const x = (index / (items.length - 1)) * width;
           const y = height - padding - (((item.price - min) / range) * (height - padding * 2));
           return `${x.toFixed(2)},${y.toFixed(2)}`;
         })
         .join(" ");
+
+      const lastItem = items[items.length - 1];
+      const lastX = width;
+      const lastY = height - padding - (((lastItem.price - min) / range) * (height - padding * 2));
+      return {
+        points,
+        lastX,
+        lastY,
+        lastPrice: lastItem.price,
+      };
     }
 
-    function applyStatus(kind, text) {
-      els.statusChip.textContent = text;
-      els.statusChip.className = "status-chip";
-      if (kind === "warning") els.statusChip.classList.add("warning");
-      if (kind === "danger") els.statusChip.classList.add("danger");
+    function applyStatus(kind) {
+      els.statusLines.className = "status-lines";
+      if (kind === "warning") els.statusLines.classList.add("warning");
+      if (kind === "danger") els.statusLines.classList.add("danger");
+    }
+
+    function updateChartTag(chartState) {
+      if (!chartState || typeof chartState.lastPrice !== "number") {
+        els.chartDot.hidden = true;
+        els.chartPriceTag.hidden = true;
+        return;
+      }
+
+      const text = formatPrice(chartState.lastPrice);
+      const tagX = Math.max(4, Math.min(chartState.lastX - 2, 126));
+      const tagY = Math.max(9, Math.min(chartState.lastY - 3, 34));
+
+      els.chartDot.hidden = false;
+      els.chartDot.setAttribute("cx", chartState.lastX.toFixed(2));
+      els.chartDot.setAttribute("cy", chartState.lastY.toFixed(2));
+
+      els.chartPriceTag.hidden = false;
+      els.chartPriceTag.textContent = text;
+      els.chartPriceTag.setAttribute("x", tagX.toFixed(2));
+      els.chartPriceTag.setAttribute("y", tagY.toFixed(2));
     }
 
     function formatCount(value) {
@@ -417,7 +516,6 @@
       els.focusMeta.hidden = true;
       els.marketMeta.hidden = false;
       els.marketFootline.hidden = false;
-      els.alertText.hidden = false;
       els.symbolCode.hidden = false;
     }
 
@@ -443,7 +541,6 @@
       els.focusMeta.hidden = false;
       els.marketMeta.hidden = true;
       els.marketFootline.hidden = true;
-      els.alertText.hidden = true;
       els.symbolCode.hidden = true;
     }
 
@@ -490,7 +587,9 @@
         els.positionChangePercent.textContent = formatPercent(quote.positionChangePercent);
         applyValueColor(els.positionChangePercent, quote.positionChangePercent);
         els.updatedAt.textContent = formatQuoteTime(quote.updatedAt);
-        els.chartLine.setAttribute("points", buildChartPoints(quote.intraday));
+        const chartState = buildChartState(quote.intraday);
+        els.chartLine.setAttribute("points", chartState?.points || "");
+        updateChartTag(chartState);
         els.chartWrap.hidden = !Array.isArray(quote.intraday) || quote.intraday.length < 2;
       } else {
         els.priceValue.textContent = "--";
@@ -500,33 +599,21 @@
         els.positionChangePercent.className = "";
         els.updatedAt.textContent = "--:--:--";
         els.chartLine.setAttribute("points", "");
+        updateChartTag(null);
         els.chartWrap.hidden = true;
       }
 
       if (error) {
-        applyStatus("danger", "异常");
-        els.alertText.textContent = error;
-        els.alertText.className = "alert-text error-text";
+        applyStatus("danger");
         return;
       }
-
-      els.alertText.className = "alert-text";
 
       if (lastAlert) {
-        applyStatus(lastAlert.level === "danger" ? "danger" : "warning", lastAlert.title);
-        els.alertText.textContent = lastAlert.message;
+        applyStatus(lastAlert.level === "danger" ? "danger" : "warning");
         return;
       }
 
-      applyStatus("normal", "监控中");
-      const strategy = activeSymbol?.strategy || {};
-      const autoText =
-        strategy.mode === "auto" && strategy.autoStopLoss
-          ? `自动位 ${formatPrice(activeSymbol?.levels?.stopLossPrice)} / ${formatPrice(activeSymbol?.levels?.takeProfitPrice)}`
-          : "继续盯成本位和止损位";
-      els.alertText.textContent = quote
-        ? `当前 ${els.symbolName.textContent} ${formatPrice(quote.price)} 元，${autoText}。`
-        : "等待行情更新...";
+      applyStatus("normal");
     }
 
     async function init() {
