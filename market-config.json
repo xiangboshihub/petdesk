@@ -11,8 +11,8 @@
       "market": "SZ",
       "levels": {
         "costPrice": 51.89,
-        "stopLossPrice": 40.3,
-        "takeProfitPrice": 86.66
+        "stopLossPrice": 39.76,
+        "takeProfitPrice": 88.28
       },
       "strategy": {
         "mode": "auto",
@@ -20,23 +20,23 @@
         "autoStopLoss": true,
         "autoTakeProfit": true,
         "basis": "support-atr-2r",
-        "atr14": 2.77,
+        "atr14": 3.45,
         "supportPrice": 42.52,
-        "computedAt": "2026-04-20T06:16:37.174Z",
+        "computedAt": "2026-04-24T06:01:24.471Z",
         "rewardRisk": 3,
         "note": "激进策略：前低下方 + ATR 缓冲，止盈按 3R 计算"
       }
     },
     {
-      "id": "603629",
+      "id": "00568",
       "enabled": true,
-      "name": "利通电子",
-      "code": "603629",
-      "market": "SH",
+      "name": "山东墨龙",
+      "code": "00568",
+      "market": "HK",
       "levels": {
-        "costPrice": 88.26,
-        "stopLossPrice": 51.93,
-        "takeProfitPrice": 160.92
+        "costPrice": 9.02,
+        "stopLossPrice": 6.93,
+        "takeProfitPrice": 13.2
       },
       "strategy": {
         "mode": "auto",
@@ -44,81 +44,9 @@
         "autoStopLoss": true,
         "autoTakeProfit": true,
         "basis": "support-atr-2r",
-        "atr14": 6.48,
-        "supportPrice": 55.17,
-        "computedAt": "2026-04-20T06:16:37.141Z",
-        "rewardRisk": 2,
-        "note": "均衡策略：前低下方 + ATR 缓冲，止盈按 2R 计算"
-      }
-    },
-    {
-      "id": "920885",
-      "enabled": true,
-      "name": "星辰科技",
-      "code": "920885",
-      "market": "BJ",
-      "levels": {
-        "costPrice": 21.03,
-        "stopLossPrice": null,
-        "takeProfitPrice": null
-      },
-      "strategy": {
-        "mode": "auto",
-        "profile": "balanced",
-        "autoStopLoss": true,
-        "autoTakeProfit": true,
-        "basis": "support-atr-2r",
-        "atr14": null,
-        "supportPrice": null,
-        "computedAt": "",
-        "rewardRisk": 2,
-        "note": "星辰科技 日线数据不足，暂时无法自动计算止盈止损"
-      }
-    },
-    {
-      "id": "301396",
-      "enabled": true,
-      "name": "宏景科技",
-      "code": "301396",
-      "market": "SZ",
-      "levels": {
-        "costPrice": 275.37,
-        "stopLossPrice": 133.78,
-        "takeProfitPrice": 558.55
-      },
-      "strategy": {
-        "mode": "auto",
-        "profile": "balanced",
-        "autoStopLoss": true,
-        "autoTakeProfit": true,
-        "basis": "support-atr-2r",
-        "atr14": 22.45,
-        "supportPrice": 145,
-        "computedAt": "2026-04-20T06:16:37.140Z",
-        "rewardRisk": 2,
-        "note": "均衡策略：前低下方 + ATR 缓冲，止盈按 2R 计算"
-      }
-    },
-    {
-      "id": "688629",
-      "enabled": true,
-      "name": "华丰科技",
-      "code": "688629",
-      "market": "SH",
-      "levels": {
-        "costPrice": 138.84,
-        "stopLossPrice": 95.37,
-        "takeProfitPrice": 225.78
-      },
-      "strategy": {
-        "mode": "auto",
-        "profile": "balanced",
-        "autoStopLoss": true,
-        "autoTakeProfit": true,
-        "basis": "support-atr-2r",
-        "atr14": 7.66,
-        "supportPrice": 99.2,
-        "computedAt": "2026-04-20T06:16:37.139Z",
+        "atr14": 0.92,
+        "supportPrice": 7.39,
+        "computedAt": "2026-04-24T06:01:24.164Z",
         "rewardRisk": 2,
         "note": "均衡策略：前低下方 + ATR 缓冲，止盈按 2R 计算"
       }

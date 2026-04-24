@@ -354,9 +354,18 @@
     }
 
     function formatQuoteTime(raw) {
-      if (!raw || String(raw).length !== 14) return "--:--:--";
-      const text = String(raw);
-      return `${text.slice(8, 10)}:${text.slice(10, 12)}:${text.slice(12, 14)}`;
+      const text = String(raw || "").trim();
+      if (!text) return "--:--:--";
+      if (/^\d{14}$/.test(text)) {
+        return `${text.slice(8, 10)}:${text.slice(10, 12)}:${text.slice(12, 14)}`;
+      }
+
+      const matched = text.match(/(\d{2}):(\d{2}):(\d{2})$/);
+      if (matched) {
+        return `${matched[1]}:${matched[2]}:${matched[3]}`;
+      }
+
+      return "--:--:--";
     }
 
     function applyValueColor(element, value) {
@@ -454,8 +463,9 @@
         totalTypingKeyCount: 0,
       };
 
-      els.symbolName.textContent = activeSymbol?.name || "未配置";
-      els.symbolCode.textContent = activeSymbol?.code || "--";
+      const displayName = quote?.name || activeSymbol?.name || "未配置";
+      els.symbolName.textContent = displayName;
+      els.symbolCode.textContent = activeSymbol?.code || quote?.code || "--";
 
       if (bubbleMode === "focus") {
         showFocusView();
